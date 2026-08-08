@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reservoir Routing in Ephemeral Streams — Interactive Model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sand:        #F3ECDC;
+    --sand-deep:   #E7DBBE;
+    --ink:         #2B2420;
+    --ink-soft:    #6B5F4F;
+    --line:        #D9CBA6;
+    --paper:       #FBF8F0;
+    --water:       #1F6F78;
+    --water-dark:  #134850;
+    --flood:       #B5502D;
+    --clay:        #9C7A3C;
+    --ok:          #3E7A4C;
+    --radius: 10px;
+    --shadow: 0 1px 2px rgba(43,36,32,0.06), 0 8px 24px -12px rgba(43,36,32,0.18);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--sand); color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    line-height:1.5;
+  }
+  .mono{font-family:'Spline Sans Mono',monospace;}
+  h1,h2,h3{font-family:'Fraunces',serif; font-weight:600; letter-spacing:-0.01em; margin:0 0 0.35em;}
+
+  header.hero{
+    padding: 3.2rem 1.5rem 2.4rem;
+    background:
+      radial-gradient(ellipse 80% 60% at 15% -10%, rgba(31,111,120,0.14), transparent 60%),
+      linear-gradient(180deg, var(--sand) 0%, var(--sand) 100%);
+    border-bottom:1px solid var(--line);
+    position:relative; overflow:hidden;
+  }
+  .hero-inner{max-width:1180px; margin:0 auto; position:relative;}
+  .eyebrow{
+    font-family:'Spline Sans Mono',monospace; font-size:0.72rem; letter-spacing:0.14em;
+    text-transform:uppercase; color:var(--water-dark); margin-bottom:0.9rem; display:flex; align-items:center; gap:0.6rem;
+  }
+  .eyebrow::before{content:""; width:22px; height:1px; background:var(--water-dark); display:inline-block;}
+  h1.title{font-size:clamp(2.0rem, 4vw, 3.05rem); max-width:16ch; color:var(--ink);}
+  .subtitle{font-size:1.05rem; color:var(--ink-soft); max-width:62ch; margin-top:0.9rem;}
+  .hero-refs{margin-top:1.6rem; font-size:0.85rem; color:var(--ink-soft);}
+  .hero-refs a{color:var(--water-dark); text-decoration:none; border-bottom:1px solid var(--water);}
+  .hero-refs a:hover{color:var(--flood); border-color:var(--flood);}
+
+  /* ---------- software chrome: title bar / ribbon / toolbar ---------- */
+  .titlebar{
+    background: linear-gradient(180deg, var(--water-dark) 0%, #0F3A40 100%);
+    color:#EAF3F2; padding:0.65rem 1.2rem; display:flex; align-items:center;
+    justify-content:space-between; gap:1rem; flex-wrap:wrap;
+    border-bottom:1px solid #0A2C31;
+  }
+  .titlebar-left{display:flex; align-items:center; gap:0.7rem;}
+  .titlebar-icon{
+    width:30px; height:30px; border-radius:7px; background:var(--flood);
+    display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif;
+    font-weight:600; font-size:1.0rem; color:#fff; flex:none;
+  }
+  .titlebar-name{font-family:'Fraunces',serif; font-weight:600; font-size:1.05rem; color:#fff; line-height:1.15;}
+  .titlebar-sub{font-size:0.72rem; color:#B9D3D1; line-height:1.2;}
+  .titlebar-tag{font-size:0.76rem; color:#B9D3D1; font-family:'Spline Sans Mono',monospace;}
+
+  .ribbon{
+    background:var(--paper); border-bottom:1px solid var(--line);
+    display:flex; align-items:stretch; overflow-x:auto; padding:0 0.6rem;
+    -ms-overflow-style:none; scrollbar-width:thin; position:relative;
+  }
+  .ribbon::after{
+    content:""; position:sticky; right:0; top:0; bottom:0; margin-left:-24px;
+    width:24px; flex:none; pointer-events:none;
+    background:linear-gradient(90deg, rgba(251,248,240,0), var(--paper));
+  }
+  @media (min-width: 900px){ .ribbon::after{ display:none; } }
+  .ribbon-tab{
+    background:none; border:none; border-bottom:2.5px solid transparent;
+    padding:0.65rem 0.95rem; font-family:'Inter',sans-serif; font-size:0.82rem; font-weight:600;
+    color:var(--ink-soft); cursor:pointer; white-space:nowrap; transition:all .12s ease;
+  }
+  .ribbon-tab:hover{color:var(--water-dark); background:rgba(31,111,120,0.06);}
+  .ribbon-tab.active{color:var(--water-dark); border-bottom-color:var(--water);}
+
+  .toolbar{
+    background:var(--sand-deep); border-bottom:1px solid var(--line);
+    padding:0.55rem 1.2rem; display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;
+  }
+  .toolbar button, .toolbar .caseSelect{
+    font-family:'Inter',sans-serif; font-size:0.78rem; font-weight:600; padding:0.42rem 0.8rem;
+    border-radius:6px; border:1px solid var(--line); background:#fff; color:var(--ink); cursor:pointer;
+  }
+  .toolbar button.primary{background:var(--water); border-color:var(--water-dark); color:#fff;}
+  .toolbar button.primary:hover{background:var(--water-dark);}
+  .toolbar button:not(.primary):hover{border-color:var(--water); color:var(--water-dark);}
+  .toolbar .sep{width:1px; align-self:stretch; background:var(--line); margin:0 0.2rem;}
+  .toolbar .caseSelect{padding:0.4rem 0.6rem; cursor:pointer;}
+
+  .tabPanel{display:none;}
+  .tabPanel.active{display:block;}
+
+  main{max-width:1180px; margin:0 auto; padding: 1.4rem 1.5rem 4rem;}
+
+  .layout{display:grid; grid-template-columns: 340px 1fr; gap:1.4rem; align-items:start;}
+  @media (max-width: 920px){ .layout{grid-template-columns: 1fr;} }
+
+  .panel{
+    background:var(--paper); border:1px solid var(--line); border-radius:var(--radius);
+    box-shadow:var(--shadow);
+  }
+  .panel + .panel{margin-top:1.1rem;}
+  .panel-head{
+    padding:0.85rem 1.1rem; border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .panel-head h3{font-size:0.95rem; color:var(--water-dark);}
+  .panel-body{padding:1.0rem 1.1rem 1.15rem;}
+
+  .field{margin-bottom:0.95rem;}
+  .field:last-child{margin-bottom:0;}
+  .field label{
+    display:flex; justify-content:space-between; align-items:baseline;
+    font-size:0.82rem; color:var(--ink); margin-bottom:0.3rem; font-weight:500;
+  }
+  .field label .val{font-family:'Spline Sans Mono',monospace; color:var(--water-dark); font-size:0.82rem; font-weight:500;}
+  input[type=range]{
+    width:100%; accent-color: var(--water); height:4px; cursor:pointer;
+  }
+  select, input[type=number]{
+    width:100%; padding:0.4rem 0.5rem; border:1px solid var(--line); border-radius:6px;
+    background:#fff; font-family:'Inter',sans-serif; font-size:0.85rem; color:var(--ink);
+  }
+  .hint{font-size:0.74rem; color:var(--ink-soft); margin-top:0.25rem;}
+
+  .stateToggle{display:flex; gap:0.5rem; margin-top:0.2rem;}
+  .stateToggle button{
+    flex:1; padding:0.5rem 0.4rem; border-radius:7px; border:1px solid var(--line);
+    background:#fff; color:var(--ink-soft); font-size:0.8rem; font-weight:600; cursor:pointer;
+    font-family:'Inter',sans-serif; transition:all .15s ease;
+  }
+
+  .chartWrap{
+    background:var(--paper); border:1px solid var(--line); border-radius:var(--radius);
+    box-shadow:var(--shadow); padding:1.1rem 1.2rem 1rem;
+  }
+  .chartWrap h3{font-size:0.95rem; color:var(--water-dark); margin-bottom:0.15rem;}
+  .chartWrap .hint{margin-bottom:0.6rem;}
+  .chartSvg{width:100%; height:auto; display:block; overflow:visible;}
+  .chartSvg .gridline{stroke:var(--line); stroke-width:1;}
+  .chartSvg .axis{stroke:var(--ink-soft); stroke-width:1.2;}
+  .chartSvg .axisLabel{font-family:'Inter',sans-serif; font-size:11px; fill:var(--ink-soft);}
+  .chartSvg .tickLabel{font-family:'Spline Sans Mono',monospace; font-size:9.5px; fill:var(--ink-soft);}
+  .chartSvg .series{fill:none; stroke-linejoin:round; stroke-linecap:round;}
+  .chartLegend{
+    display:flex; flex-wrap:wrap; gap:0.35rem 0.9rem; background:#DCEEF0; border:1px solid #B9DBDE;
+    border-radius:7px; padding:0.5rem 0.7rem; margin-bottom:0.7rem; font-size:0.76rem;
+  }
+  .chartLegend .item{display:flex; align-items:center; gap:0.35rem; color:var(--ink);}
+  .chartLegend .swatch{width:16px; height:3px; border-radius:2px; display:inline-block; flex:none;}
+  .chartLegend .swatch.dashed{background:none; border-top:3px dashed currentColor; height:0;}
+
+  .comparisonGrid{display:grid; grid-template-columns:1fr; gap:1.1rem; margin-top:1.1rem;}
+  .comparisonGrid .panel-tag{
+    font-family:'Spline Sans Mono',monospace; font-size:0.74rem; color:var(--ink-soft);
+    background:var(--sand-deep); border-radius:5px; padding:0.1rem 0.5rem; display:inline-block; margin-left:0.4rem;
+  }
+
+  .statsRow{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:0.8rem;
+    margin-top:1.1rem;
+  }
+  .stat{
+    background:var(--paper); border:1px solid var(--line); border-radius:var(--radius);
+    padding:0.85rem 0.95rem; box-shadow:var(--shadow);
+  }
+  .stat .label{font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-soft); font-weight:600;}
+  .stat .num{font-family:'Fraunces',serif; font-size:1.55rem; margin-top:0.15rem; color:var(--ink); font-variant-numeric: tabular-nums;}
+  .stat .sub{font-size:0.75rem; color:var(--ink-soft); margin-top:0.1rem;}
+  .stat.full .num{color:var(--water-dark);}
+  .stat.empty .num{color:var(--clay);}
+
+  .crossSection{margin-top:1.1rem; padding:1.0rem 1.1rem 1.15rem;}
+  .crossSection svg{width:100%; height:auto; display:block;}
+
+  footer{
+    max-width:1180px; margin:0 auto; padding:1.6rem 1.5rem 3rem; color:var(--ink-soft);
+    font-size:0.82rem; border-top:1px solid var(--line);
+  }
+  footer a{color:var(--water-dark);}
+
+  .legend-swatch{display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:0.4rem; vertical-align:middle;}
+
+  /* ---------- Case & Files tab ---------- */
+  .caseGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:0.8rem; margin-bottom:1.2rem;}
+  .caseCard{
+    border:1px solid var(--line); border-radius:var(--radius); background:var(--paper);
+    padding:0.9rem 1rem; cursor:pointer; transition:all .12s ease; box-shadow:var(--shadow);
+  }
+  .caseCard:hover{border-color:var(--water); transform:translateY(-1px);}
+  .caseCard .name{font-weight:600; font-size:0.88rem; color:var(--water-dark); margin-bottom:0.25rem;}
+  .caseCard .desc{font-size:0.76rem; color:var(--ink-soft); line-height:1.4;}
+
+  .fileRow{display:flex; align-items:center; gap:0.8rem; flex-wrap:wrap; margin-bottom:0.9rem;}
+  .fileRow button{
+    font-family:'Inter',sans-serif; font-size:0.82rem; font-weight:600; padding:0.55rem 1.0rem;
+    border-radius:7px; border:1px solid var(--water-dark); background:var(--water-dark); color:#fff; cursor:pointer;
+  }
+  .fileRow button:hover{background:var(--water);}
+  .fileRow button.ghost{background:#fff; color:var(--water-dark); border-color:var(--line);}
+  .fileRow button.ghost:hover{border-color:var(--water);}
+  .fileRow input[type=file]{display:none;}
+  .fileStatus{font-size:0.78rem; color:var(--ink-soft);}
+
+  .aboutBody p{font-size:0.9rem; color:var(--ink); margin:0 0 0.9rem; max-width:70ch;}
+  .aboutBody a{color:var(--water-dark);}
+
+  table.dataTable{width:100%; border-collapse:collapse; font-size:0.85rem;}
+  table.dataTable th, table.dataTable td{
+    text-align:left; padding:0.5rem 0.65rem; border-bottom:1px solid var(--line);
+  }
+  table.dataTable th{color:var(--ink-soft); font-weight:600; font-size:0.73rem; text-transform:uppercase; letter-spacing:0.04em; width:55%;}
+  table.dataTable td.num{font-family:'Spline Sans Mono',monospace; text-align:right; color:var(--water-dark); font-weight:500;}
+  table.dataTable tr:last-child td, table.dataTable tr:last-child th{border-bottom:none;}
+  table.dataTable .flagOk{color:var(--ok); font-weight:600;}
+  table.dataTable .flagWarn{color:var(--flood); font-weight:600;}
+  table.dataTable .sectionRow th{
+    background:var(--sand-deep); color:var(--water-dark); font-size:0.75rem; padding-top:0.7rem; padding-bottom:0.4rem;
+  }
+</style>
+</head>
+<body>
+
+<header class="titlebar">
+  <div class="titlebar-left">
+    <div class="titlebar-icon">A</div>
+    <div>
+      <div class="titlebar-name">AridRoute Studio</div>
+      <div class="titlebar-sub">Reservoir Flood Routing &middot; Empty/Full Simulator &amp; Visualiser</div>
+    </div>
+  </div>
+  <div class="titlebar-tag">Open-source &middot; runs entirely in your browser</div>
+</header>
+
+<nav class="ribbon" id="ribbon">
+  <button class="ribbon-tab active" data-tab="routing">Routing</button>
+  <button class="ribbon-tab" data-tab="sensitivity">Sensitivity</button>
+  <button class="ribbon-tab" data-tab="xsection">Cross-section</button>
+  <button class="ribbon-tab" data-tab="outlet">Outlet Curve</button>
+  <button class="ribbon-tab" data-tab="inflowprev">Inflow Preview</button>
+  <button class="ribbon-tab" data-tab="diagnostics">Diagnostics</button>
+  <button class="ribbon-tab" data-tab="case">Case &amp; Files</button>
+  <button class="ribbon-tab" data-tab="about">About</button>
+</nav>
+
+<div class="toolbar">
+  <button class="primary" id="btnReset">&#8635; Reset defaults</button>
+  <span class="sep"></span>
+  <span style="font-size:0.78rem; color:var(--ink-soft);">
+    <span style="color:var(--ok);">&#9679;</span> Live &mdash; every chart recomputes automatically when you change a parameter
+  </span>
+</div>
+
+<main>
+  <div class="layout">
+
+    <!-- ============ CONTROLS (persistent across all tabs) ============ -->
+    <div class="controls">
+
+      <div class="panel">
+        <div class="panel-head"><h3>Reservoir shape</h3></div>
+        <div class="panel-body">
+          <div class="field">
+            <label>Max storage, S<sub>max</sub> <span class="val mono" id="v_Smax"></span></label>
+            <input type="range" id="Smax" min="4" max="8" step="0.01" value="5.477">
+            <div class="hint">10<sup>x</sup> m&sup3; &mdash; log scale</div>
+          </div>
+          <div class="field">
+            <label>Max height, h<sub>max</sub> <span class="val mono" id="v_hmax"></span></label>
+            <input type="range" id="hmax" min="3" max="40" step="0.5" value="12">
+          </div>
+          <div class="field">
+            <label>Reservoir coefficient, N <span class="val mono" id="v_N"></span></label>
+            <input type="range" id="N" min="0.20" max="0.90" step="0.01" value="0.43">
+            <div class="hint">KSA sites reported in the range 0.39&ndash;0.68 (reference paper, Table 7)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Spillway</h3></div>
+        <div class="panel-body">
+          <div class="field">
+            <label>Coefficient, C <span class="val mono" id="v_C"></span></label>
+            <input type="range" id="C" min="0" max="3" step="0.05" value="1.7">
+          </div>
+          <div class="field">
+            <label>Crest length, B (m) <span class="val mono" id="v_B"></span></label>
+            <input type="range" id="B" min="0" max="200" step="1" value="40">
+          </div>
+          <div class="field">
+            <label>Crest height, P (m) <span class="val mono" id="v_P"></span></label>
+            <input type="range" id="P" min="0" max="40" step="0.1" value="8">
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Orifice / pipe bank</h3></div>
+        <div class="panel-body">
+          <div class="field">
+            <label>Discharge coeff., C<sub>d</sub> <span class="val mono" id="v_Cd"></span></label>
+            <input type="range" id="Cd" min="0" max="1" step="0.01" value="0.62">
+          </div>
+          <div class="field">
+            <label>Area each, a (m&sup2;) <span class="val mono" id="v_a"></span></label>
+            <input type="range" id="a" min="0" max="5" step="0.05" value="1.0">
+          </div>
+          <div class="field">
+            <label>Count, n <span class="val mono" id="v_n"></span></label>
+            <input type="range" id="n" min="0" max="10" step="1" value="3">
+          </div>
+          <div class="field">
+            <label>Invert height, &Delta;z (m) <span class="val mono" id="v_dz"></span></label>
+            <input type="range" id="dz" min="0.1" max="15" step="0.1" value="1.0">
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Inflow &mdash; Williams-Hann hydrograph</h3></div>
+        <div class="panel-body">
+          <div class="field">
+            <label>Peak inflow, I<sub>max</sub> (m&sup3;/s) <span class="val mono" id="v_Imax"></span></label>
+            <input type="range" id="Imax" min="1" max="400" step="1" value="80">
+          </div>
+          <div class="field">
+            <label>Time to peak, t<sub>p</sub> (min) <span class="val mono" id="v_tp"></span></label>
+            <input type="range" id="tp" min="5" max="120" step="1" value="23.3">
+          </div>
+          <div class="field">
+            <label>Shape factor, K <span class="val mono" id="v_K"></span></label>
+            <input type="range" id="K" min="1" max="8" step="0.01" value="3.77">
+            <div class="hint">K=3.77 is the SCS unit-hydrograph default</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============ TAB PANELS ============ -->
+    <div class="results">
+
+      <!-- ---- Routing (default) ---- -->
+      <div class="tabPanel active" id="tab-routing">
+        <div class="chartWrap">
+          <h3>Inflow vs. routed outflow</h3>
+          <div class="hint">Current parameter set &mdash; reservoir starting full vs. starting empty, side by side.</div>
+          <div class="chartLegend">
+            <span class="item"><span class="swatch" style="background:#8C97A6"></span>Inflow</span>
+            <span class="item"><span class="swatch" style="background:#1F6F78"></span>Outflow, reservoir starts full</span>
+            <span class="item"><span class="swatch" style="background:#B5502D"></span>Outflow, reservoir starts empty</span>
+          </div>
+          <svg id="chart" class="chartSvg" viewBox="0 0 720 380" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+
+        <div class="statsRow">
+          <div class="stat"><div class="label">Peak inflow</div><div class="num mono" id="s_Ip">&mdash;</div><div class="sub">m&sup3;/s</div></div>
+          <div class="stat full"><div class="label">Peak outflow &middot; full</div><div class="num mono" id="s_Of">&mdash;</div><div class="sub" id="s_attf">attenuation &mdash;</div></div>
+          <div class="stat empty"><div class="label">Peak outflow &middot; empty</div><div class="num mono" id="s_Oe">&mdash;</div><div class="sub" id="s_atte">attenuation &mdash;</div></div>
+          <div class="stat"><div class="label">Fill-up time, &tau;</div><div class="num mono" id="s_tau">&mdash;</div><div class="sub">crest reached? (empty case)</div></div>
+        </div>
+      </div>
+
+      <!-- ---- Sensitivity ---- -->
+      <div class="tabPanel" id="tab-sensitivity">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Sensitivity to the reservoir coefficient, N <span class="panel-tag">mirrors reference paper Fig. 10</span></h3>
+          </div>
+          <div class="panel-body">
+            <div class="hint" style="margin-top:-0.3rem;">
+              Same inflow and outlet as the Routing tab, routed with four values of N spanning the range
+              reported for Saudi Arabian dam sites (reference paper, Table 7: 0.39&ndash;0.68) &mdash; showing
+              how sensitive the outflow hydrograph is to the reservoir&rsquo;s shape, for both starting conditions.
+            </div>
+
+            <div class="comparisonGrid">
+              <div>
+                <strong style="font-size:0.85rem;">(a) Reservoir starts full</strong>
+                <div class="chartLegend" id="legend_a"></div>
+                <svg id="chart_full_N" class="chartSvg" viewBox="0 0 720 340" preserveAspectRatio="xMidYMid meet"></svg>
+              </div>
+              <div>
+                <strong style="font-size:0.85rem;">(b) Reservoir starts empty</strong>
+                <div class="chartLegend" id="legend_b"></div>
+                <svg id="chart_empty_N" class="chartSvg" viewBox="0 0 720 340" preserveAspectRatio="xMidYMid meet"></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---- Cross-section ---- -->
+      <div class="tabPanel" id="tab-xsection">
+        <div class="panel crossSection">
+          <div class="panel-head" style="margin:-1rem -1.1rem 0.9rem; padding:0.85rem 1.1rem;"><h3>Reservoir cross-section (schematic)</h3></div>
+          <svg id="xsection" viewBox="0 0 640 220" preserveAspectRatio="xMidYMid meet"></svg>
+          <div class="hint" style="margin-top:0.4rem;">Shaded bands: dead/live storage (below the spillway crest) and surcharge storage (above it). Markers show the maximum water level reached, starting full vs. empty.</div>
+        </div>
+      </div>
+
+      <!-- ---- Outlet Curve ---- -->
+      <div class="tabPanel" id="tab-outlet">
+        <div class="chartWrap">
+          <h3>Outlet rating curve</h3>
+          <div class="hint">Combined spillway + orifice discharge, O(h), as a function of water depth above the reservoir bottom &mdash; this is the curve the routing ODE actually integrates against.</div>
+          <div class="chartLegend">
+            <span class="item"><span class="swatch" style="background:#134850"></span>Total outlet discharge, O(h)</span>
+            <span class="item"><span class="swatch dashed" style="color:#1F6F78"></span>Spillway component</span>
+            <span class="item"><span class="swatch dashed" style="color:#9C7A3C"></span>Orifice/pipe component</span>
+          </div>
+          <svg id="chart_outlet" class="chartSvg" viewBox="0 0 720 380" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+      </div>
+
+      <!-- ---- Inflow Preview ---- -->
+      <div class="tabPanel" id="tab-inflowprev">
+        <div class="chartWrap">
+          <h3>Inflow hydrograph shape</h3>
+          <div class="hint">The Williams-Hann design hydrograph alone, at full resolution &mdash; useful for sanity-checking I<sub>max</sub>, t<sub>p</sub>, and K in isolation from the reservoir.</div>
+          <div class="chartLegend">
+            <span class="item"><span class="swatch" style="background:#8C97A6"></span>Inflow, I(t)</span>
+          </div>
+          <svg id="chart_inflow_prev" class="chartSvg" viewBox="0 0 720 340" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+        <div class="statsRow">
+          <div class="stat"><div class="label">Peak inflow</div><div class="num mono" id="ip_Imax">&mdash;</div><div class="sub">m&sup3;/s</div></div>
+          <div class="stat"><div class="label">Time to peak</div><div class="num mono" id="ip_tp">&mdash;</div><div class="sub">min</div></div>
+          <div class="stat"><div class="label">Shape factor K</div><div class="num mono" id="ip_K">&mdash;</div><div class="sub">SCS default = 3.77</div></div>
+        </div>
+      </div>
+
+      <!-- ---- Diagnostics ---- -->
+      <div class="tabPanel" id="tab-diagnostics">
+        <div class="panel">
+          <div class="panel-head"><h3>Diagnostic summary</h3></div>
+          <div class="panel-body">
+            <table class="dataTable" id="diagTable"></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---- Case & Files ---- -->
+      <div class="tabPanel" id="tab-case">
+        <div class="panel">
+          <div class="panel-head"><h3>Save / load parameters</h3></div>
+          <div class="panel-body">
+            <div class="fileRow">
+              <button id="btnSaveJson">&#8595; Save parameters (JSON)</button>
+              <button class="ghost" id="btnLoadJsonTrigger">&#8593; Load parameters (JSON)</button>
+              <input type="file" id="fileLoadJson" accept="application/json">
+              <button class="ghost" id="btnExportCsv">&#8595; Export curves (CSV)</button>
+            </div>
+            <div class="fileStatus" id="fileStatus">No file loaded yet &mdash; current parameters are the defaults.</div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:1.1rem;">
+          <div class="panel-head"><h3>Example cases</h3></div>
+          <div class="panel-body">
+            <div class="caseGrid" id="caseGrid"></div>
+            <div class="hint">Click a case to load it into every tab instantly.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---- About ---- -->
+      <div class="tabPanel" id="tab-about">
+        <div class="panel">
+          <div class="panel-head"><h3>About this model</h3></div>
+          <div class="panel-body aboutBody">
+            <p>
+              An interactive companion to a semi-analytical reservoir-routing model: a Williams&ndash;Hann
+              design-flood hydrograph is routed through a reservoir shaped by the Mohammadzadah-Habili
+              dimensionless depth&ndash;storage curve, through a combined spillway + orifice outlet &mdash;
+              starting <strong>full</strong> or <strong>empty</strong>. Every chart recomputes live, numerically,
+              in your browser.
+            </p>
+            <p>
+              Numerical routing uses a fixed-step RK4 integration of a storage-space reformulation
+              (<code class="mono">dS/dt = I(t) &minus; O(h(S))</code>) &mdash; smooth and non-singular even
+              for an empty-starting reservoir, unlike integrating in depth-space directly. The full
+              semi-analytical (closed-form) solution, its derivation, and its validation against this
+              numerical benchmark are in the <a href="theory_paper.md">theory paper</a> and
+              <a href="reservoir_routing_colab.ipynb">Colab notebook</a>.
+            </p>
+            <p>
+              Reference: Kamis, A.S., Bahrawi, J.A., Elfeki, A.M. (2018). Reservoir routing in ephemeral
+              streams in arid regions. <em>Arabian Journal of Geosciences</em>, 11:106.
+            </p>
+            <p>
+              Related: <a href="https://asepmhidayatulloh.github.io/Rainfall-journey-to-Outlet/">Storm
+              Hydrograph &mdash; a Raindrop's Journey to the Gauge</a> (unit-hydrograph / &phi;-index /
+              Nash-cascade simulator, separate repository).
+            </p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<footer>
+  <p>AridRoute Studio &middot; open-source, no server, no external chart library.</p>
+</footer>
+
+<script>
+// ---------------------------------------------------------------
+// Reservoir routing engine (JS port of the storage-space numerical
+// benchmark in routing_core.py — see that file / the theory paper
+// for the full derivation and the semi-analytical closed form).
+// ---------------------------------------------------------------
+
+function hannInflow(t, Imax, tp, K){
+  if (t <= 0) return 0;
+  const x = t / tp;
+  return Imax * Math.pow(x * Math.exp(1 - x), K);
+}
+
+function hOfS(S, Smax, hmax, N){
+  const Sc = Math.max(S, 0);
+  return (hmax / Math.LN2) * Math.log(1 + Math.pow(Sc / Smax, N));
+}
+
+function outletO(h, p){
+  let O = 0;
+  if (h > p.P) O += p.C * p.B * Math.pow(h - p.P, 1.5);
+  if (h > p.dz) O += p.n * p.Cd * p.a * Math.sqrt(h - p.dz);
+  return O;
+}
+
+function SofH(h, Smax, hmax, N){
+  const x = Math.log(2) * h / hmax;
+  return Smax * Math.pow(Math.max(Math.expm1(x), 0), 1 / N);
+}
+
+// RK4 fixed-step integration of dS/dt = I(t) - O(h(S))
+function routeNumerical(tArr, Imax, tp, K, shape, outletP, S0){
+  const n = tArr.length;
+  const dt = tArr[1] - tArr[0];
+  const S = new Float64Array(n);
+  const h = new Float64Array(n);
+  const O = new Float64Array(n);
+  S[0] = S0;
+  h[0] = hOfS(S[0], shape.Smax, shape.hmax, shape.N);
+  O[0] = outletO(h[0], outletP);
+
+  const deriv = (t, Sval) => {
+    const hv = hOfS(Sval, shape.Smax, shape.hmax, shape.N);
+    const Iv = hannInflow(t, Imax, tp, K);
+    const Ov = outletO(hv, outletP);
+    return Iv - Ov;
+  };
+
+  for (let i = 0; i < n - 1; i++){
+    const t = tArr[i];
+    const k1 = deriv(t, S[i]);
+    const k2 = deriv(t + dt/2, S[i] + dt/2*k1);
+    const k3 = deriv(t + dt/2, S[i] + dt/2*k2);
+    const k4 = deriv(t + dt,   S[i] + dt*k3);
+    let Snext = S[i] + (dt/6)*(k1 + 2*k2 + 2*k3 + k4);
+    if (Snext < 0) Snext = 0;
+    S[i+1] = Snext;
+    h[i+1] = hOfS(Snext, shape.Smax, shape.hmax, shape.N);
+    O[i+1] = outletO(h[i+1], outletP);
+  }
+  return {S, h, O};
+}
+
+// ---------------------------------------------------------------
+// Dependency-free SVG line chart (no external library — this is
+// deliberate: an external CDN script failing to load, or being
+// blocked, was the most likely reason the original Chart.js-based
+// version could render blank in some environments).
+// ---------------------------------------------------------------
+function renderLineChart(svg, series, opts){
+  const width = opts.width || 720, height = opts.height || 380;
+  const mL = 55, mR = 20, mT = 16, mB = 44;
+  const plotW = width - mL - mR, plotH = height - mT - mB;
+  const xMax = opts.xMax, yMax = opts.yMax || 1;
+  const xScale = x => mL + (x / xMax) * plotW;
+  const yScale = y => mT + plotH - (Math.max(y,0) / yMax) * plotH;
+
+  const parts = [];
+  const yTicks = 5;
+  for (let i = 0; i <= yTicks; i++){
+    const yVal = yMax * i / yTicks;
+    const yPix = yScale(yVal);
+    parts.push(`<line class="gridline" x1="${mL}" y1="${yPix.toFixed(1)}" x2="${mL+plotW}" y2="${yPix.toFixed(1)}"/>`);
+    parts.push(`<text class="tickLabel" x="${mL-8}" y="${(yPix+3).toFixed(1)}" text-anchor="end">${Math.round(yVal)}</text>`);
+  }
+  const xTicks = 6;
+  for (let i = 0; i <= xTicks; i++){
+    const xVal = xMax * i / xTicks;
+    const xPix = xScale(xVal);
+    parts.push(`<text class="tickLabel" x="${xPix.toFixed(1)}" y="${mT+plotH+16}" text-anchor="middle">${Math.round(xVal)}</text>`);
+  }
+  parts.push(`<line class="axis" x1="${mL}" y1="${mT}" x2="${mL}" y2="${mT+plotH}"/>`);
+  parts.push(`<line class="axis" x1="${mL}" y1="${mT+plotH}" x2="${mL+plotW}" y2="${mT+plotH}"/>`);
+  parts.push(`<text class="axisLabel" x="${mL+plotW/2}" y="${height-4}" text-anchor="middle">${opts.xLabel||""}</text>`);
+  parts.push(`<text class="axisLabel" transform="translate(14,${mT+plotH/2}) rotate(-90)" text-anchor="middle">${opts.yLabel||""}</text>`);
+
+  for (const s of series){
+    const n = s.x.length;
+    let d = "";
+    for (let i=0;i<n;i++){
+      d += (i===0 ? "M" : "L") + xScale(s.x[i]).toFixed(2) + "," + yScale(s.y[i]).toFixed(2) + " ";
+    }
+    parts.push(`<path class="series" d="${d}" stroke="${s.color}" stroke-width="${s.width||2.3}" ${s.dashed ? 'stroke-dasharray="7 5"' : ""}/>`);
+  }
+
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.innerHTML = parts.join("");
+}
+
+function buildLegend(el, items){
+  el.innerHTML = items.map(it =>
+    `<span class="item"><span class="swatch${it.dashed?' dashed':''}" style="${it.dashed?`color:${it.color}`:`background:${it.color}`}"></span>${it.label}</span>`
+  ).join("");
+}
+
+// ---------------------------------------------------------------
+// UI wiring
+// ---------------------------------------------------------------
+const ids = ["Smax","hmax","N","C","B","P","Cd","a","n","dz","Imax","tp","K"];
+const els = {}; ids.forEach(id => els[id] = document.getElementById(id));
+
+function fmt(x, d=2){
+  if (!isFinite(x)) return "\u2014";
+  if (Math.abs(x) >= 1000) return x.toLocaleString(undefined, {maximumFractionDigits:0});
+  return Number(x).toFixed(d);
+}
+
+function readParams(){
+  const Smax = Math.pow(10, parseFloat(els.Smax.value));
+  const hmax = parseFloat(els.hmax.value);
+  const N = parseFloat(els.N.value);
+  const C = parseFloat(els.C.value);
+  const B = parseFloat(els.B.value);
+  const P = parseFloat(els.P.value);
+  const Cd = parseFloat(els.Cd.value);
+  const a = parseFloat(els.a.value);
+  const n = parseFloat(els.n.value);
+  const dz = Math.min(parseFloat(els.dz.value), Math.max(P - 0.05, 0.05)); // keep orifice below crest for a sane base-flow role
+  const Imax = parseFloat(els.Imax.value);
+  const tp = parseFloat(els.tp.value) * 60; // minutes -> seconds
+  const K = parseFloat(els.K.value);
+  return {Smax, hmax, N, C, B, P, Cd, a, n, dz, Imax, tp, K};
+}
+
+function updateLabels(P){
+  els_v("v_Smax", P.Smax.toExponential(2) + " m3");
+  els_v("v_hmax", P.hmax.toFixed(1) + " m");
+  els_v("v_N", P.N.toFixed(2));
+  els_v("v_C", P.C.toFixed(2));
+  els_v("v_B", P.B.toFixed(0) + " m");
+  els_v("v_P", P.P.toFixed(1) + " m");
+  els_v("v_Cd", P.Cd.toFixed(2));
+  els_v("v_a", P.a.toFixed(2) + " m2");
+  els_v("v_n", P.n.toFixed(0));
+  els_v("v_dz", P.dz.toFixed(1) + " m");
+  els_v("v_Imax", P.Imax.toFixed(0) + " m3/s");
+  els_v("v_tp", (P.tp/60).toFixed(1) + " min");
+  els_v("v_K", P.K.toFixed(2));
+}
+function els_v(id, txt){ document.getElementById(id).textContent = txt; }
+
+function drawCrossSection(P, hFullMax, hEmptyMax){
+  const svg = document.getElementById("xsection");
+  const W = 640, H = 220, baseY = 190, topY = 20, leftX = 60, rightX = 560;
+  const hmax = P.hmax;
+  const yOf = (h) => baseY - (Math.min(h, hmax*1.15) / (hmax*1.15)) * (baseY - topY);
+
+  const yP = yOf(P.P);
+  const yDz = yOf(P.dz);
+  const yFull = yOf(Math.min(hFullMax, hmax*1.15));
+  const yEmpty = yOf(Math.min(hEmptyMax, hmax*1.15));
+  const yTopMax = yOf(hmax);
+
+  let svgContent = `
+    <rect x="0" y="0" width="${W}" height="${H}" fill="none"/>
+    <!-- basin outline (trapezoid) -->
+    <polygon points="${leftX-20},${baseY} ${leftX+40},${topY} ${rightX-40},${topY} ${rightX+20},${baseY}"
+      fill="#EFE6CC" stroke="#C9B98A" stroke-width="1.5"/>
+    <!-- live storage band -->
+    <rect x="${leftX-20}" y="${yP}" width="${rightX-leftX+40}" height="${baseY-yP}" fill="#CFE3E4" opacity="0.55"/>
+    <!-- surcharge band -->
+    <rect x="${leftX-20}" y="${topY}" width="${rightX-leftX+40}" height="${yP-topY}" fill="#F6D9C4" opacity="0.45"/>
+    <!-- spillway crest line -->
+    <line x1="${leftX-20}" y1="${yP}" x2="${rightX+20}" y2="${yP}" stroke="${'#1F6F78'}" stroke-width="2" stroke-dasharray="6 4"/>
+    <text x="${rightX+26}" y="${yP+4}" font-size="11" fill="#134850" font-family="Spline Sans Mono, monospace">crest P</text>
+    <!-- orifice invert -->
+    <line x1="${leftX-20}" y1="${yDz}" x2="${rightX+20}" y2="${yDz}" stroke="#9C7A3C" stroke-width="1.5" stroke-dasharray="2 3"/>
+    <text x="${rightX+26}" y="${yDz+4}" font-size="11" fill="#9C7A3C" font-family="Spline Sans Mono, monospace">&#916;z</text>
+    <!-- max level, full start -->
+    <line x1="${leftX-30}" y1="${yFull}" x2="${rightX+30}" y2="${yFull}" stroke="#1F6F78" stroke-width="2.5"/>
+    <text x="${leftX-38}" y="${yFull-6}" font-size="11" text-anchor="end" fill="#1F6F78" font-family="Inter, sans-serif" font-weight="600">full: max level</text>
+    <!-- max level, empty start -->
+    <line x1="${leftX-30}" y1="${yEmpty}" x2="${rightX+30}" y2="${yEmpty}" stroke="#B5502D" stroke-width="2.5" stroke-dasharray="1 0"/>
+    <text x="${leftX-38}" y="${yEmpty+14}" font-size="11" text-anchor="end" fill="#B5502D" font-family="Inter, sans-serif" font-weight="600">empty: max level</text>
+    <!-- bottom / hmax labels -->
+    <text x="${leftX-20}" y="${baseY+16}" font-size="10" fill="#6B5F4F" font-family="Spline Sans Mono, monospace">0 m</text>
+    <text x="${leftX-20}" y="${yTopMax-6}" font-size="10" fill="#6B5F4F" font-family="Spline Sans Mono, monospace">h_max=${hmax.toFixed(1)}m</text>
+  `;
+  svg.innerHTML = svgContent;
+}
+
+// Reservoir-coefficient values shown in the sensitivity panels, chosen to
+// span the range reported for real Saudi dam sites in the reference
+// paper (Table 7: N between 0.39 and 0.68) — mirrors its Fig. 10.
+const N_SENSITIVITY_VALUES = [0.35, 0.43, 0.55, 0.68];
+const N_COLORS = ["#1F6F78", "#B5502D", "#6B5CA5", "#9C7A3C"];
+
+function updateNSensitivityPanel(svgId, legendId, tArr, tMin, P, S0_of){
+  const series = [];
+  let yMax = 0;
+  const inflow = Array.from(tArr, t => hannInflow(t, P.Imax, P.tp, P.K));
+  yMax = Math.max(yMax, ...inflow);
+
+  const outflowsByN = [];
+  for (const Nval of N_SENSITIVITY_VALUES){
+    const shape = {Smax: P.Smax, hmax: P.hmax, N: Nval};
+    const outletP = {C: P.C, B: P.B, P: P.P, Cd: P.Cd, a: P.a, n: P.n, dz: P.dz};
+    const S0 = S0_of(P, shape);
+    const res = routeNumerical(tArr, P.Imax, P.tp, P.K, shape, outletP, S0);
+    const O = Array.from(res.O);
+    outflowsByN.push(O);
+    yMax = Math.max(yMax, ...O);
+  }
+  yMax = yMax * 1.08 || 1;
+
+  series.push({x: tMin, y: inflow, color: "#8C97A6", width: 2.0, dashed:false});
+  N_SENSITIVITY_VALUES.forEach((Nval, i) => {
+    series.push({x: tMin, y: outflowsByN[i], color: N_COLORS[i], width: 2.3, dashed:false});
+  });
+
+  renderLineChart(document.getElementById(svgId), series, {
+    xMax: tMin[tMin.length-1], yMax, xLabel: "Time (min)", yLabel: "Discharge (m\u00B3/s)"
+  });
+
+  buildLegend(document.getElementById(legendId), [
+    {label:"Inflow", color:"#8C97A6"},
+    ...N_SENSITIVITY_VALUES.map((Nval,i)=>({label:`Outflow, N=${Nval.toFixed(2)}`, color:N_COLORS[i]}))
+  ]);
+}
+
+function update(){
+  const P = readParams();
+  updateLabels(P);
+
+  const shape = {Smax: P.Smax, hmax: P.hmax, N: P.N};
+  const outletP = {C: P.C, B: P.B, P: P.P, Cd: P.Cd, a: P.a, n: P.n, dz: P.dz};
+
+  // time axis: span enough to see the full recession
+  const tSpanMinutes = Math.max(P.tp/60 * 12, 60);
+  const nSteps = 480;
+  const tMaxSec = tSpanMinutes * 60;
+  const dt = tMaxSec / nSteps;
+  const tArr = new Float64Array(nSteps+1);
+  for (let i=0;i<=nSteps;i++) tArr[i] = i*dt;
+  const tMin = Array.from(tArr, t => t/60);
+
+  const S0_full = SofH(P.P, P.Smax, P.hmax, P.N);
+  const resFull = routeNumerical(tArr, P.Imax, P.tp, P.K, shape, outletP, S0_full);
+  const resEmpty = routeNumerical(tArr, P.Imax, P.tp, P.K, shape, outletP, 0);
+
+  const inflow = Array.from(tArr, t => hannInflow(t, P.Imax, P.tp, P.K));
+  const outFull = Array.from(resFull.O);
+  const outEmpty = Array.from(resEmpty.O);
+
+  const peakI = Math.max(...inflow);
+  const peakOf = Math.max(...outFull);
+  const peakOe = Math.max(...outEmpty);
+  const hFullMax = Math.max(...resFull.h);
+  const hEmptyMax = Math.max(...resEmpty.h);
+
+  let tau = null;
+  for (let i=0;i<resEmpty.h.length;i++){
+    if (resEmpty.h[i] >= P.P){ tau = tArr[i]; break; }
+  }
+
+  document.getElementById("s_Ip").textContent = fmt(peakI,1);
+  document.getElementById("s_Of").textContent = fmt(peakOf,1);
+  document.getElementById("s_Oe").textContent = fmt(peakOe,1);
+  document.getElementById("s_attf").textContent = "attenuation " + (peakOf/peakI*100).toFixed(0) + "%";
+  document.getElementById("s_atte").textContent = "attenuation " + (peakOe/peakI*100).toFixed(0) + "%";
+  document.getElementById("s_tau").textContent = tau===null ? "crest not reached" : (tau/60).toFixed(0) + " min";
+
+  drawCrossSection(P, hFullMax, hEmptyMax);
+
+  // ---- main chart (current N, full vs empty) ----
+  const yMaxMain = Math.max(peakI, peakOf, peakOe) * 1.08 || 1;
+  renderLineChart(document.getElementById("chart"), [
+    {x: tMin, y: inflow,   color: "#8C97A6", width: 2.0},
+    {x: tMin, y: outFull,  color: "#1F6F78", width: 2.6},
+    {x: tMin, y: outEmpty, color: "#B5502D", width: 2.6},
+  ], {xMax: tMin[tMin.length-1], yMax: yMaxMain, xLabel:"Time (min)", yLabel:"Discharge (m\u00B3/s)"});
+
+  // ---- Fig. 10-style N-sensitivity panels ----
+  updateNSensitivityPanel("chart_full_N", "legend_a", tArr, tMin, P,
+    (P, shape) => SofH(P.P, P.Smax, P.hmax, shape.N));
+  updateNSensitivityPanel("chart_empty_N", "legend_b", tArr, tMin, P,
+    (P, shape) => 0);
+
+  // ---- new tabs: refreshed every update() so switching tabs is instant ----
+  renderOutletCurve(P);
+  renderInflowPreview(P);
+  renderDiagnostics(P, peakI, peakOf, peakOe, tau, resFull, resEmpty);
+
+  LAST_RUN = {P, tArr, tMin, inflow, outFull, outEmpty};
+}
+
+// ---------------------------------------------------------------
+// Outlet rating curve: O(h) split into spillway / orifice / total
+// ---------------------------------------------------------------
+function renderOutletCurve(P){
+  const hMax = P.hmax * 1.15;
+  const nPts = 200;
+  const hArr = Array.from({length: nPts+1}, (_, i) => i/nPts * hMax);
+  const outletP = {C: P.C, B: P.B, P: P.P, Cd: P.Cd, a: P.a, n: P.n, dz: P.dz};
+  const spill = hArr.map(h => h > P.P ? P.C*P.B*Math.pow(h-P.P, 1.5) : 0);
+  const orif  = hArr.map(h => h > P.dz ? P.n*P.Cd*P.a*Math.sqrt(h-P.dz) : 0);
+  const total = hArr.map((h,i) => spill[i] + orif[i]);
+  const yMax = Math.max(...total) * 1.1 || 1;
+
+  renderLineChart(document.getElementById("chart_outlet"), [
+    {x: hArr, y: total, color: "#134850", width: 2.6},
+    {x: hArr, y: spill, color: "#1F6F78", width: 1.8, dashed: true},
+    {x: hArr, y: orif,  color: "#9C7A3C", width: 1.8, dashed: true},
+  ], {xMax: hMax, yMax, xLabel: "Depth above reservoir bottom, h (m)", yLabel: "Discharge (m\u00B3/s)"});
+}
+
+// ---------------------------------------------------------------
+// Inflow hydrograph preview (standalone, full resolution)
+// ---------------------------------------------------------------
+function renderInflowPreview(P){
+  const tSpanMinSec = Math.max(P.tp * 6, 1800); // seconds
+  const nPts = 300;
+  const tArr = Array.from({length: nPts+1}, (_, i) => i/nPts * tSpanMinSec);
+  const tMin = tArr.map(t => t/60);
+  const inflow = tArr.map(t => hannInflow(t, P.Imax, P.tp, P.K));
+  const yMax = Math.max(...inflow) * 1.1 || 1;
+
+  renderLineChart(document.getElementById("chart_inflow_prev"), [
+    {x: tMin, y: inflow, color: "#8C97A6", width: 2.4},
+  ], {xMax: tMin[tMin.length-1], yMax, xLabel: "Time (min)", yLabel: "Inflow (m\u00B3/s)"});
+
+  els_v("ip_Imax", P.Imax.toFixed(0));
+  els_v("ip_tp", (P.tp/60).toFixed(1));
+  els_v("ip_K", P.K.toFixed(2));
+}
+
+// ---------------------------------------------------------------
+// Diagnostics panel
+// ---------------------------------------------------------------
+function classifyM(M){
+  if (M >= 3.5 && M <= 4.5) return "Gorge (I)";
+  if (M >= 2.5 && M < 3.5) return "Hill (II)";
+  if (M >= 1.5 && M < 2.5) return "Flood Plain Foothill (III)";
+  if (M >= 1.0 && M < 1.5) return "Lake (IV)";
+  return "outside standard classification range";
+}
+
+function renderDiagnostics(P, peakI, peakOf, peakOe, tau, resFull, resEmpty){
+  const M = (P.N + 0.9063) / 1.0751;
+  const Amax = 2*Math.log(2)*P.Smax / (P.N * P.hmax);
+
+  // spillway vs orifice share at the full-reservoir peak instant
+  let idxPeakFull = 0, qMaxFull = -Infinity;
+  for (let i=0;i<resFull.O.length;i++) if (resFull.O[i] > qMaxFull){ qMaxFull = resFull.O[i]; idxPeakFull = i; }
+  const hAtPeak = resFull.h[idxPeakFull];
+  const spillAtPeak = hAtPeak > P.P ? P.C*P.B*Math.pow(hAtPeak-P.P, 1.5) : 0;
+  const orifAtPeak = hAtPeak > P.dz ? P.n*P.Cd*P.a*Math.sqrt(hAtPeak-P.dz) : 0;
+  const spillShare = (spillAtPeak+orifAtPeak) > 0 ? 100*spillAtPeak/(spillAtPeak+orifAtPeak) : 0;
+
+  const tauFlag = tau === null
+    ? `<span class="mono">crest not reached &mdash; N/A</span>`
+    : (tau > P.tp*60
+        ? `<span class="flagOk">&#10003; &tau; &gt; t<sub>p</sub> (post-fill tail model valid)</span>`
+        : `<span class="flagWarn">&#9888; &tau; &le; t<sub>p</sub> &mdash; use numerical benchmark here</span>`);
+
+  document.getElementById("diagTable").innerHTML = `
+    <tr class="sectionRow"><th colspan="2">Reservoir geometry</th></tr>
+    <tr><th>Reservoir coefficient, N</th><td class="num">${P.N.toFixed(3)}</td></tr>
+    <tr><th>Shape factor, M</th><td class="num">${M.toFixed(2)} &mdash; ${classifyM(M)}</td></tr>
+    <tr><th>Derived A<sub>max</sub></th><td class="num">${Amax.toLocaleString(undefined,{maximumFractionDigits:0})} m&sup2;</td></tr>
+
+    <tr class="sectionRow"><th colspan="2">Outlet balance (at full-reservoir peak)</th></tr>
+    <tr><th>Water depth at peak</th><td class="num">${hAtPeak.toFixed(2)} m</td></tr>
+    <tr><th>Spillway discharge</th><td class="num">${spillAtPeak.toFixed(2)} m&sup3;/s</td></tr>
+    <tr><th>Orifice discharge</th><td class="num">${orifAtPeak.toFixed(2)} m&sup3;/s</td></tr>
+    <tr><th>Spillway share of peak outflow</th><td class="num">${spillShare.toFixed(0)}%</td></tr>
+
+    <tr class="sectionRow"><th colspan="2">Routing results</th></tr>
+    <tr><th>Peak inflow</th><td class="num">${fmt(peakI,1)} m&sup3;/s</td></tr>
+    <tr><th>Attenuation, reservoir full</th><td class="num">${(peakOf/peakI*100).toFixed(0)}%</td></tr>
+    <tr><th>Attenuation, reservoir empty</th><td class="num">${(peakOe/peakI*100).toFixed(0)}%</td></tr>
+    <tr><th>Fill-up time, &tau; (empty case)</th><td class="num">${tau===null ? "&mdash;" : (tau/60).toFixed(0)+" min"}</td></tr>
+    <tr><th>Validity check</th><td class="num">${tauFlag}</td></tr>
+  `;
+}
+
+// ---------------------------------------------------------------
+// Ribbon tab switching
+// ---------------------------------------------------------------
+document.querySelectorAll(".ribbon-tab").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".ribbon-tab").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".tabPanel").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+  });
+});
+
+// ---------------------------------------------------------------
+// Reset to defaults
+// ---------------------------------------------------------------
+const DEFAULTS = {
+  Smax:5.477, hmax:12, N:0.43, C:1.7, B:40, P:8, Cd:0.62, a:1.0, n:3, dz:1.0,
+  Imax:80, tp:23.3, K:3.77,
+};
+function applyParams(vals){
+  ids.forEach(id => { if (vals[id] !== undefined) els[id].value = vals[id]; });
+  update();
+}
+document.getElementById("btnReset").addEventListener("click", () => applyParams(DEFAULTS));
+
+// ---------------------------------------------------------------
+// Save / load parameters (JSON), export curves (CSV)
+// ---------------------------------------------------------------
+function downloadBlob(filename, content, mime){
+  const blob = new Blob([content], {type: mime});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById("btnSaveJson").addEventListener("click", () => {
+  const vals = {};
+  ids.forEach(id => vals[id] = parseFloat(els[id].value));
+  downloadBlob("aridroute_parameters.json", JSON.stringify(vals, null, 2), "application/json");
+  document.getElementById("fileStatus").textContent = "Saved current parameters to aridroute_parameters.json.";
+});
+
+document.getElementById("btnLoadJsonTrigger").addEventListener("click", () => {
+  document.getElementById("fileLoadJson").click();
+});
+document.getElementById("fileLoadJson").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const vals = JSON.parse(reader.result);
+      applyParams(vals);
+      document.getElementById("fileStatus").textContent = `Loaded parameters from ${file.name}.`;
+    } catch (err) {
+      document.getElementById("fileStatus").textContent = `Could not parse ${file.name} as JSON parameters.`;
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = "";
+});
+
+document.getElementById("btnExportCsv").addEventListener("click", () => {
+  if (!LAST_RUN) return;
+  const {tMin, inflow, outFull, outEmpty} = LAST_RUN;
+  let csv = "time_min,inflow_m3s,outflow_full_m3s,outflow_empty_m3s\n";
+  for (let i=0;i<tMin.length;i++){
+    csv += `${tMin[i].toFixed(3)},${inflow[i].toFixed(4)},${outFull[i].toFixed(4)},${outEmpty[i].toFixed(4)}\n`;
+  }
+  downloadBlob("aridroute_curves.csv", csv, "text/csv");
+  document.getElementById("fileStatus").textContent = "Exported the current routing curves to aridroute_curves.csv.";
+});
+
+// ---------------------------------------------------------------
+// Example cases
+// ---------------------------------------------------------------
+const CASES = [
+  {name:"Default (paper-inspired)", desc:"N=0.43, moderate spillway + orifice, Imax=80 m3/s.", params: DEFAULTS},
+  {name:"Large, slow reservoir", desc:"Big Smax and hmax, low N (hill-type, Type II).", params: Object.assign({}, DEFAULTS, {Smax:6.7, hmax:28, N:0.39, B:70, P:16})},
+  {name:"Small, flashy dam", desc:"Small storage, fast response, high peak inflow.", params: Object.assign({}, DEFAULTS, {Smax:4.9, hmax:7, N:0.55, B:20, P:4, Imax:220, tp:12})},
+  {name:"Orifice-only outlet", desc:"No spillway (B=0) — routing entirely through the pipe bank.", params: Object.assign({}, DEFAULTS, {B:0, n:6, a:1.4, Cd:0.7})},
+];
+function renderCaseGrid(){
+  document.getElementById("caseGrid").innerHTML = CASES.map((c,i) =>
+    `<div class="caseCard" data-case="${i}"><div class="name">${c.name}</div><div class="desc">${c.desc}</div></div>`
+  ).join("");
+  document.querySelectorAll(".caseCard").forEach(card => {
+    card.addEventListener("click", () => {
+      const c = CASES[parseInt(card.dataset.case, 10)];
+      applyParams(c.params);
+      document.getElementById("fileStatus").textContent = `Loaded example case: ${c.name}.`;
+    });
+  });
+}
+renderCaseGrid();
+
+let LAST_RUN = null;
+
+
+ids.forEach(id => els[id].addEventListener("input", update));
+update();
+</script>
+</body>
+</html>
