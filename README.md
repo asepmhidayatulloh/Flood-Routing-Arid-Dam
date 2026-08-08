@@ -1,4 +1,4 @@
-# Reservoir Routing in Ephemeral (Arid-Region) Streams — Generalized Empty/Full Model
+# Reservoir Routing in Arid regions — Empty/Full Dam Model
 
 A semi-analytical, empty-or-full reservoir routing model driven by the
 Williams–Hann inflow hydrograph
