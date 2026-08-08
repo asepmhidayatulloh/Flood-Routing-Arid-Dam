@@ -7,11 +7,11 @@ Williams–Hann inflow hydrograph
 
 - **Just want to explore the model?** Open `index.html` (or the GitHub Pages
   link once deployed) — no installation needed.
-- **Want to reproduce the paper or adapt it to a real dam?** Open
-  `reservoir_routing_colab.ipynb` in Google Colab (Runtime → Run all), then
-  edit the reservoir/outlet/inflow parameters in Part 4.
 - **Want to use the engine in your own code?** `from routing_core import *`
   — see the docstrings in `routing_core.py`.
+
+## 🌊 Live Simulation
+[**Launch the Flood Routing – Arid Dam Simulation →**](https://asepmhidayatulloh.github.io/Flood-Routing-Arid-Dam/)
 
 ## Scope and status
 
